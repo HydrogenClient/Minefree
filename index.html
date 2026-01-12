@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MineFree Dashboard</title>
+<style>
+  body { font-family: monospace; background: #111; color: #0f0; padding: 20px; }
+  input, button { padding: 5px; margin: 5px 0; }
+  .console { background: #000; padding: 10px; height: 200px; overflow-y: scroll; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<h1>MineFree Dashboard</h1>
+
+<input type="text" id="serverInput" placeholder="Enter server domain">
+<button onclick="createServer()">Create Server</button>
+
+<p id="message"></p>
+
+<h2>Server Info</h2>
+<p>Status: <span id="status">-</span></p>
+<p>Players: <span id="players">-</span></p>
+<p>MOTD: <span id="motd">-</span></p>
+<p>Version: <span id="version">-</span></p>
+
+<h2>Console</h2>
+<div class="console" id="console"></div>
+
+<script>
+const consoleEl = document.getElementById("console");
+let currentServer = null;
+
+async function createServer() {
+  const domain = document.getElementById("serverInput").value.trim();
+  if (!domain) return alert("Enter a server domain");
+
+  document.getElementById("message").textContent = "Checking...";
+
+  try {
+    const res = await fetch(`https://api.mcsrvstat.us/2/${domain}`);
+    const data = await res.json();
+
+    if (data.online || data.players) {
+      document.getElementById("message").textContent = "Name Not Available ❌";
+    } else {
+      document.getElementById("message").textContent = "Server Created ✅ (simulated)";
+      currentServer = domain;
+      fetchServerStatus();
+      setInterval(fetchServerStatus, 10000); // update every 10 sec
+    }
+  } catch (e) {
+    document.getElementById("message").textContent = "Server Created ✅ (simulated)";
+    currentServer = domain;
+    fetchServerStatus();
+    setInterval(fetchServerStatus, 10000);
+  }
+}
+
+async function fetchServerStatus() {
+  if (!currentServer) return;
+
+  try {
+    const res = await fetch(`https://api.mcsrvstat.us/2/${currentServer}`);
+    const data = await res.json();
+
+    if (data.online) {
+      document.getElementById("status").textContent = "🟢 Online";
+      document.getElementById("players").textContent = `${data.players.online}/${data.players.max}`;
+      document.getElementById("motd").textContent = data.motd.clean.join(" ");
+      document.getElementById("version").textContent = data.version;
+
+      addConsoleLog(`[${new Date().toLocaleTimeString()}] Server online, ${data.players.online}/${data.players.max} players`);
+    } else {
+      document.getElementById("status").textContent = "🔴 Offline";
+      addConsoleLog(`[${new Date().toLocaleTimeString()}] Server offline`);
+    }
+  } catch {
+    document.getElementById("status").textContent = "❌ Error";
+    addConsoleLog(`[${new Date().toLocaleTimeString()}] Error fetching server`);
+  }
+}
+
+function addConsoleLog(msg) {
+  const div = document.createElement("div");
+  div.textContent = msg;
+  consoleEl.appendChild(div);
+  consoleEl.scrollTop = consoleEl.scrollHeight;
+}
+</script>
+
+</body>
+</html>
